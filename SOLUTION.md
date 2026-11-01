@@ -36,7 +36,7 @@ Web files:
 | `web/src/routes/homes.$homeId.tsx` | The main page: totals, bills with pay buttons, and a side panel with people (what each owes) and the add bill form. |
 | `web/src/useAction.ts`             | Small hook for "run an async action, track pending and error".                                                      |
 | `web/src/money.ts`                 | Format cents as dollars, parse a dollar string into cents without floats.                                           |
-| `web/src/components.tsx`           | Inline SVG icons, member avatar, and the panel used for error and not-found states.                                 |
+| `web/src/components.tsx`           | Member avatar (initial letter) and the panel used for error and not-found states.                                   |
 | `web/src/recentHomes.ts`           | Remembers the last 5 opened homes in `localStorage`, so nobody has to keep a home id.                               |
 
 Data flow for paying a share: the button calls `api.payShare` with an Idempotency-Key, the Worker
@@ -175,7 +175,7 @@ a missing home is 404 even if its body is also wrong.
 - **Paying.** The button is disabled while the request runs, so double clicks send one request.
   The share shows "Paid" only when fresh server data says so. If the payment fails, the share stays
   unpaid, a red banner under that row says "Payment failed: ... The share is still unpaid.", and
-  the button turns orange and says "Retry".
+  the button changes to an outlined "Retry".
 - **One key per attempt.** The key is created on the first click and kept in a `useRef`. If the
   outcome is unknown (network error, timeout, or 5xx), the key is kept, so "Retry" sends the same
   key. If the first request actually reached the server, the retry gets the same 200 instead of
