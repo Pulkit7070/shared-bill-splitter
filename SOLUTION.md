@@ -29,13 +29,15 @@ API files:
 
 Web files:
 
-| File                               | What it does                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------- |
-| `web/src/api.ts`                   | Typed fetch wrapper: timeout, JSON parsing, `ApiError`.                   |
-| `web/src/routes/index.tsx`         | Start page: create a home or open one by id.                              |
-| `web/src/routes/homes.$homeId.tsx` | The main page: members, balances, add bill, bills with pay buttons.       |
-| `web/src/useAction.ts`             | Small hook for "run an async action, track pending and error".            |
-| `web/src/money.ts`                 | Format cents as dollars, parse a dollar string into cents without floats. |
+| File                               | What it does                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------- |
+| `web/src/api.ts`                   | Typed fetch wrapper: timeout, JSON parsing, `ApiError`.                               |
+| `web/src/routes/index.tsx`         | Start page: create a home or open one by id.                                          |
+| `web/src/routes/homes.$homeId.tsx` | The main page: members, balances, add bill, bills with pay buttons.                   |
+| `web/src/useAction.ts`             | Small hook for "run an async action, track pending and error".                        |
+| `web/src/money.ts`                 | Format cents as dollars, parse a dollar string into cents without floats.             |
+| `web/src/components.tsx`           | Inline SVG icons, member avatar, and the panel used for error and not-found states.   |
+| `web/src/recentHomes.ts`           | Remembers the last 5 opened homes in `localStorage`, so nobody has to keep a home id. |
 
 Data flow for paying a share: the button calls `api.payShare` with an Idempotency-Key, the Worker
 runs one D1 batch (UPDATE then SELECT), returns the share, and the page calls
@@ -158,9 +160,11 @@ a missing home is 404 even if its body is also wrong.
 ## 6. Web state handling
 
 - **Loading.** The route loader fetches home, bills and balances in parallel. If it takes longer
-  than 150 ms the `pendingComponent` shows "Loading home...".
+  than 150 ms the `pendingComponent` shows a skeleton of the page (grey blocks in the shape of the
+  real content) plus a screen-reader-only "Loading home..." message.
 - **Error.** If any of the three requests fails, the `errorComponent` shows the message and a
-  "Try again" button that re-runs the loader. A 404 shows "Home not found".
+  "Try again" button that re-runs the loader. A 404 shows "Home not found" with a link back to
+  the start page instead of a pointless retry.
 - **Empty.** "No members yet" and "No bills yet" messages. The "Add bill" button is disabled with
   a hint while the home has no members.
 - **Slow API.** Every request uses `AbortSignal.timeout(10000)`. A timeout becomes an `ApiError`
@@ -170,7 +174,8 @@ a missing home is 404 even if its body is also wrong.
   message or "Request failed with status N".
 - **Paying.** The button is disabled while the request runs, so double clicks send one request.
   The share shows "Paid" only when fresh server data says so. If the payment fails, the share stays
-  unpaid and the error appears under the button, which now says "Retry".
+  unpaid, a red banner under that row says "Payment failed: ... The share is still unpaid.", and
+  the button turns orange and says "Retry".
 - **One key per attempt.** The key is created on the first click and kept in a `useRef`. If the
   outcome is unknown (network error, timeout, or 5xx), the key is kept, so "Retry" sends the same
   key. If the first request actually reached the server, the retry gets the same 200 instead of
