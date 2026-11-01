@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
-import { ApiError, api, type Bill, type Member, messageOf, type Share } from '../api'
+import { useEffect, useRef, useState } from 'react'
+import { ApiError, api, type Balance, type Bill, type Member, messageOf, type Share } from '../api'
+import { Avatar, Icon, StatePanel } from '../components'
 import { formatCents, parseDollars } from '../money'
+import { rememberHome } from '../recentHomes'
 import { useAction } from '../useAction'
 
 export const Route = createFileRoute('/homes/$homeId')({
@@ -14,32 +16,66 @@ export const Route = createFileRoute('/homes/$homeId')({
     return { home, bills, balances }
   },
   pendingMs: 150,
-  pendingComponent: () => (
-    <main className="page">
-      <p className="muted" role="status">
-        Loading home...
-      </p>
-    </main>
-  ),
+  pendingComponent: Loading,
   errorComponent: LoadError,
   component: HomePage,
 })
 
+const paidAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+
+function BackLink() {
+  return (
+    <Link to="/" className="back-link">
+      <Icon name="arrowLeft" size={16} />
+      All homes
+    </Link>
+  )
+}
+
+function Loading() {
+  return (
+    <main className="page" aria-busy="true">
+      <p className="sr-only" role="status">
+        Loading home...
+      </p>
+      <div className="skeleton skeleton-title" />
+      <div className="stats">
+        <div className="skeleton skeleton-stat" />
+        <div className="skeleton skeleton-stat" />
+        <div className="skeleton skeleton-stat" />
+      </div>
+      <div className="skeleton skeleton-card" />
+      <div className="skeleton skeleton-card" />
+    </main>
+  )
+}
+
 function LoadError({ error }: { error: unknown }) {
   const router = useRouter()
   const notFound = error instanceof ApiError && error.status === 404
+
   return (
     <main className="page">
-      <Link to="/">Back</Link>
-      <div className="card" role="alert">
-        <h2>{notFound ? 'Home not found' : 'Could not load this home'}</h2>
-        <p className="error">{notFound ? 'Check the home id and try again.' : messageOf(error)}</p>
-        {!notFound && (
-          <button type="button" onClick={() => void router.invalidate()}>
+      <BackLink />
+      {notFound ? (
+        <StatePanel icon="search" tone="neutral" title="Home not found">
+          <p>No home has this id. It may be mistyped, or the link may be incomplete.</p>
+          <Link to="/" className="btn btn-primary">
+            Create or open a home
+          </Link>
+        </StatePanel>
+      ) : (
+        <StatePanel icon="alert" tone="error" title="Could not load this home">
+          <p>{messageOf(error)}</p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => void router.invalidate()}
+          >
             Try again
           </button>
-        )}
-      </div>
+        </StatePanel>
+      )}
     </main>
   )
 }
@@ -47,45 +83,77 @@ function LoadError({ error }: { error: unknown }) {
 function HomePage() {
   const { home, bills, balances } = Route.useLoaderData()
   const memberName = new Map(home.members.map((member) => [member.id, member.name]))
+  const outstanding = balances.reduce((total, balance) => total + balance.outstandingCents, 0)
+
+  useEffect(() => {
+    rememberHome({ id: home.id, name: home.name })
+  }, [home.id, home.name])
 
   return (
     <main className="page">
-      <Link to="/">Back</Link>
-      <h1>{home.name}</h1>
-      <p className="muted">
-        Home id: <code>{home.id}</code>
-      </p>
+      <BackLink />
+      <header className="home-header">
+        <h1>{home.name}</h1>
+        <CopyLink />
+      </header>
 
-      <div className="grid">
+      <dl className="stats">
+        <div className="stat">
+          <dt>Outstanding</dt>
+          <dd>{formatCents(outstanding)}</dd>
+        </div>
+        <div className="stat">
+          <dt>Bills</dt>
+          <dd>{bills.length}</dd>
+        </div>
+        <div className="stat">
+          <dt>Members</dt>
+          <dd>{home.members.length}</dd>
+        </div>
+      </dl>
+
+      <div className="two-col">
         <Members homeId={home.id} members={home.members} />
-        <section className="card">
-          <h2>Balances</h2>
-          {balances.length === 0 ? (
-            <p className="muted">No members yet.</p>
-          ) : (
-            <ul className="list">
-              {balances.map((balance) => (
-                <li key={balance.memberId}>
-                  <span>{balance.name}</span>
-                  <span>{formatCents(balance.outstandingCents)} owed</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <Balances balances={balances} />
       </div>
 
-      <AddBill homeId={home.id} hasMembers={home.members.length > 0} />
+      <AddBill homeId={home.id} memberCount={home.members.length} />
 
-      <section>
-        <h2>Bills</h2>
+      <section aria-labelledby="bills-heading">
+        <h2 id="bills-heading" className="section-title">
+          Bills
+        </h2>
         {bills.length === 0 ? (
-          <p className="muted card">No bills yet.</p>
+          <div className="empty">
+            <Icon name="receipt" size={24} />
+            <p>No bills yet. Add one above and it will be split between every member.</p>
+          </div>
         ) : (
           bills.map((bill) => <BillCard key={bill.id} bill={bill} memberName={memberName} />)
         )}
       </section>
     </main>
+  )
+}
+
+function CopyLink() {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard can be blocked; the address bar still has the link.
+    }
+  }
+
+  return (
+    <button type="button" className="btn btn-ghost" onClick={() => void copy()}>
+      <Icon name={copied ? 'check' : 'copy'} size={16} />
+      {copied ? 'Link copied' : 'Copy link'}
+    </button>
   )
 }
 
@@ -102,41 +170,72 @@ function Members({ homeId, members }: { homeId: string; members: Member[] }) {
     <section className="card">
       <h2>Members</h2>
       {members.length === 0 ? (
-        <p className="muted">No members yet. Add someone before creating a bill.</p>
+        <p className="muted">No members yet. Add the people who share this home.</p>
       ) : (
-        <ol className="list">
+        <ol className="people">
           {members.map((member) => (
-            <li key={member.id}>{member.name}</li>
+            <li key={member.id}>
+              <Avatar name={member.name} />
+              {member.name}
+            </li>
           ))}
         </ol>
       )}
       <form
-        className="row"
+        className="inline-form"
         onSubmit={(event) => {
           event.preventDefault()
           void add.run()
         }}
       >
-        <input
-          aria-label="Member name"
-          placeholder="Name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <button type="submit" disabled={add.pending || !name.trim()}>
-          {add.pending ? 'Adding...' : 'Add member'}
+        <label className="field">
+          <span className="sr-only">Member name</span>
+          <input
+            placeholder="Add a member"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <button type="submit" className="btn btn-secondary" disabled={add.pending || !name.trim()}>
+          {add.pending ? 'Adding...' : 'Add'}
         </button>
       </form>
-      {add.error && <p className="error">{add.error}</p>}
+      {add.error && <p className="form-error">{add.error}</p>}
     </section>
   )
 }
 
-function AddBill({ homeId, hasMembers }: { homeId: string; hasMembers: boolean }) {
+function Balances({ balances }: { balances: Balance[] }) {
+  return (
+    <section className="card">
+      <h2>Balances</h2>
+      {balances.length === 0 ? (
+        <p className="muted">Balances appear once the home has members.</p>
+      ) : (
+        <ul className="people">
+          {balances.map((balance) => (
+            <li key={balance.memberId}>
+              <Avatar name={balance.name} />
+              <span className="grow">{balance.name}</span>
+              {balance.outstandingCents === 0 ? (
+                <span className="badge badge-paid">Settled</span>
+              ) : (
+                <span className="amount">{formatCents(balance.outstandingCents)} owed</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function AddBill({ homeId, memberCount }: { homeId: string; memberCount: number }) {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [amount, setAmount] = useState('')
   const totalCents = parseDollars(amount)
+  const amountInvalid = amount.trim() !== '' && totalCents === null
 
   const add = useAction(async () => {
     if (totalCents === null) throw new Error('Enter an amount like 12.50.')
@@ -150,66 +249,108 @@ function AddBill({ homeId, hasMembers }: { homeId: string; hasMembers: boolean }
     <section className="card">
       <h2>Add a bill</h2>
       <form
-        className="row"
+        className="bill-form"
         onSubmit={(event) => {
           event.preventDefault()
           void add.run()
         }}
       >
-        <input
-          aria-label="Bill title"
-          placeholder="Electricity"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        <input
-          aria-label="Amount in dollars"
-          placeholder="100.00"
-          inputMode="decimal"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-        />
+        <label className="field">
+          <span>Title</span>
+          <input
+            placeholder="Electricity"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>Amount</span>
+          <span className="money-input">
+            <span aria-hidden="true">$</span>
+            <input
+              placeholder="0.00"
+              inputMode="decimal"
+              value={amount}
+              aria-invalid={amountInvalid}
+              onChange={(event) => setAmount(event.target.value)}
+            />
+          </span>
+        </label>
         <button
           type="submit"
-          disabled={add.pending || !hasMembers || !title.trim() || totalCents === null}
+          className="btn btn-primary"
+          disabled={add.pending || memberCount === 0 || !title.trim() || totalCents === null}
         >
           {add.pending ? 'Adding...' : 'Add bill'}
         </button>
       </form>
-      {!hasMembers && <p className="muted">Add a member first. A bill needs someone to pay it.</p>}
-      {amount.trim() && totalCents === null && (
-        <p className="error">Enter a positive amount with at most 2 decimals.</p>
+      <p className="hint">
+        {memberCount === 0
+          ? 'Add a member first. A bill needs someone to pay it.'
+          : `Split evenly between ${memberCount} ${memberCount === 1 ? 'member' : 'members'}. Extra cents go to the earliest members.`}
+      </p>
+      {amountInvalid && (
+        <p className="form-error">Enter a positive amount with at most 2 decimals.</p>
       )}
-      {add.error && <p className="error">{add.error}</p>}
+      {add.error && <p className="form-error">{add.error}</p>}
     </section>
   )
 }
 
 function BillCard({ bill, memberName }: { bill: Bill; memberName: Map<string, string> }) {
+  const paidCount = bill.shares.filter((share) => share.paidAt).length
+  const settled = paidCount === bill.shares.length
+
   return (
-    <article className="card">
+    <article className="card bill">
       <header className="bill-header">
-        <h3>{bill.title}</h3>
-        <span>{formatCents(bill.totalCents)}</span>
+        <div>
+          <h3>{bill.title}</h3>
+          <p className="muted small">
+            {paidCount} of {bill.shares.length} paid
+          </p>
+        </div>
+        <div className="bill-total">
+          <span className="amount-lg">{formatCents(bill.totalCents)}</span>
+          {settled && <span className="badge badge-paid">Settled</span>}
+        </div>
       </header>
-      <table>
-        <tbody>
-          {bill.shares.map((share) => (
-            <tr key={share.id}>
-              <td>{memberName.get(share.memberId) ?? 'Unknown member'}</td>
-              <td>{formatCents(share.amountCents)}</td>
-              <td className="pay-cell">
-                <ShareStatus billId={bill.id} share={share} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div
+        className="progress"
+        role="progressbar"
+        aria-label={`${bill.title} payment progress`}
+        aria-valuemin={0}
+        aria-valuemax={bill.shares.length}
+        aria-valuenow={paidCount}
+      >
+        <span style={{ width: `${(paidCount / bill.shares.length) * 100}%` }} />
+      </div>
+      <ul className="shares">
+        {bill.shares.map((share) => {
+          const name = memberName.get(share.memberId) ?? 'Unknown member'
+          return (
+            <li key={share.id} className="share">
+              <Avatar name={name} />
+              <span className="grow">{name}</span>
+              <span className="amount">{formatCents(share.amountCents)}</span>
+              <ShareStatus billId={bill.id} share={share} memberName={name} />
+            </li>
+          )
+        })}
+      </ul>
     </article>
   )
 }
 
-function ShareStatus({ billId, share }: { billId: string; share: Share }) {
+function ShareStatus({
+  billId,
+  share,
+  memberName,
+}: {
+  billId: string
+  share: Share
+  memberName: string
+}) {
   const router = useRouter()
   // One key per payment attempt. It survives a failed try whose outcome is unknown, so
   // "Retry" cannot pay twice even if the first request did reach the server.
@@ -218,7 +359,14 @@ function ShareStatus({ billId, share }: { billId: string; share: Share }) {
   const [error, setError] = useState<string | null>(null)
 
   if (share.paidAt) {
-    return <span className="paid">Paid {new Date(share.paidAt).toLocaleString()}</span>
+    return (
+      <span className="share-action">
+        <span className="badge badge-paid" title={paidAtFormat.format(new Date(share.paidAt))}>
+          <Icon name="check" size={14} />
+          Paid
+        </span>
+      </span>
+    )
   }
 
   async function pay() {
@@ -242,12 +390,21 @@ function ShareStatus({ billId, share }: { billId: string; share: Share }) {
 
   return (
     <>
-      <button type="button" onClick={() => void pay()} disabled={paying}>
-        {paying ? 'Paying...' : error ? 'Retry' : 'Pay'}
-      </button>
+      <span className="share-action share-action-pay">
+        <button
+          type="button"
+          className={error ? 'btn btn-warning btn-sm' : 'btn btn-primary btn-sm'}
+          onClick={() => void pay()}
+          disabled={paying}
+        >
+          {paying ? 'Paying...' : error ? 'Retry' : 'Pay'}
+          <span className="sr-only"> for {memberName}</span>
+        </button>
+      </span>
       {error && (
-        <p className="error" role="alert">
-          {error}
+        <p className="share-error" role="alert">
+          <Icon name="alert" size={16} />
+          <span>Payment failed: {error} The share is still unpaid.</span>
         </p>
       )}
     </>

@@ -1,6 +1,7 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
 import { api } from '../api'
+import { loadRecentHomes } from '../recentHomes'
 import { useAction } from '../useAction'
 
 export const Route = createFileRoute('/')({
@@ -11,6 +12,7 @@ function Start() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [homeId, setHomeId] = useState('')
+  const [recentHomes] = useState(loadRecentHomes)
 
   const create = useAction(async () => {
     const home = await api.createHome(name)
@@ -25,44 +27,74 @@ function Start() {
 
   return (
     <main className="page">
-      <h1>Bill Splitter</h1>
-
-      <section className="card">
-        <h2>Create a home</h2>
-        <form
-          className="row"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void create.run()
-          }}
-        >
-          <input
-            aria-label="Home name"
-            placeholder="Flat 4B"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-          <button type="submit" disabled={create.pending || !name.trim()}>
-            {create.pending ? 'Creating...' : 'Create home'}
-          </button>
-        </form>
-        {create.error && <p className="error">{create.error}</p>}
+      <section className="hero">
+        <h1>Split shared bills, fairly to the cent.</h1>
+        <p className="lead">
+          Create a home, add the people who live there, and every bill is split between them. Each
+          person pays their own share.
+        </p>
       </section>
 
-      <section className="card">
-        <h2>Open a home</h2>
-        <form className="row" onSubmit={openHome}>
-          <input
-            aria-label="Home id"
-            placeholder="Home id"
-            value={homeId}
-            onChange={(event) => setHomeId(event.target.value)}
-          />
-          <button type="submit" disabled={!homeId.trim()}>
-            Open
-          </button>
-        </form>
-      </section>
+      <div className="start-grid">
+        <section className="card">
+          <h2>Create a home</h2>
+          <form
+            className="stack"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void create.run()
+            }}
+          >
+            <label className="field">
+              <span>Home name</span>
+              <input
+                placeholder="Flat 4B"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={create.pending || !name.trim()}
+            >
+              {create.pending ? 'Creating...' : 'Create home'}
+            </button>
+          </form>
+          {create.error && <p className="form-error">{create.error}</p>}
+        </section>
+
+        <section className="card">
+          <h2>Open a home</h2>
+          <form className="stack" onSubmit={openHome}>
+            <label className="field">
+              <span>Home id</span>
+              <input
+                placeholder="Paste a home id"
+                value={homeId}
+                onChange={(event) => setHomeId(event.target.value)}
+              />
+            </label>
+            <button type="submit" className="btn btn-secondary" disabled={!homeId.trim()}>
+              Open
+            </button>
+          </form>
+          {recentHomes.length > 0 && (
+            <div className="recent">
+              <h3>Recently opened</h3>
+              <ul>
+                {recentHomes.map((home) => (
+                  <li key={home.id}>
+                    <Link to="/homes/$homeId" params={{ homeId: home.id }}>
+                      {home.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   )
 }
