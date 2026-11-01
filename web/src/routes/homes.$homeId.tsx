@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { ApiError, api, type Balance, type Bill, messageOf, type Share } from '../api'
-import { Avatar, Icon, StatePanel } from '../components'
+import { Avatar, StatePanel } from '../components'
 import { formatCents, parseDollars } from '../money'
 import { rememberHome } from '../recentHomes'
 import { useAction } from '../useAction'
@@ -27,8 +27,7 @@ const paidDayFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 
 function BackLink() {
   return (
     <Link to="/" className="back-link">
-      <Icon name="arrowLeft" size={16} />
-      Your homes
+      Back to your homes
     </Link>
   )
 }
@@ -59,14 +58,14 @@ function LoadError({ error }: { error: unknown }) {
     <main className="page">
       <BackLink />
       {notFound ? (
-        <StatePanel icon="search" tone="neutral" title="Home not found">
+        <StatePanel tone="neutral" title="Home not found">
           <p>No home has this id. It may be mistyped, or the link may be incomplete.</p>
           <Link to="/" className="btn btn-primary">
             Create or open a home
           </Link>
         </StatePanel>
       ) : (
-        <StatePanel icon="alert" tone="error" title="Could not load this home">
+        <StatePanel tone="error" title="Could not load this home">
           <p>{messageOf(error)}</p>
           <button
             type="button"
@@ -128,9 +127,6 @@ function HomePage() {
           </h2>
           {bills.length === 0 ? (
             <div className="empty">
-              <span className="empty-icon">
-                <Icon name="receipt" size={24} />
-              </span>
               <p className="empty-title">No bills yet</p>
               <p>
                 {home.members.length === 0
@@ -162,7 +158,6 @@ function CopyLink() {
 
   return (
     <button type="button" className="btn btn-ghost" onClick={() => void copy()}>
-      <Icon name={copied ? 'check' : 'copy'} size={16} />
       {copied ? 'Link copied' : 'Copy link'}
     </button>
   )
@@ -359,7 +354,6 @@ function ShareStatus({
     return (
       <span className="share-action">
         <span className="badge badge-paid">
-          <Icon name="check" size={14} />
           Paid
           <time dateTime={share.paidAt} title={paidAtFormat.format(new Date(share.paidAt))}>
             {paidDayFormat.format(new Date(share.paidAt))}
@@ -393,7 +387,7 @@ function ShareStatus({
       <span className="share-action share-action-pay">
         <button
           type="button"
-          className={error ? 'btn btn-warning btn-sm' : 'btn btn-primary btn-sm'}
+          className={error ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
           onClick={() => void pay()}
           disabled={paying}
         >
@@ -403,8 +397,7 @@ function ShareStatus({
       </span>
       {error && (
         <p className="share-error" role="alert">
-          <Icon name="alert" size={16} />
-          <span>Payment failed: {error} The share is still unpaid.</span>
+          Payment failed: {error} The share is still unpaid.
         </p>
       )}
     </>
