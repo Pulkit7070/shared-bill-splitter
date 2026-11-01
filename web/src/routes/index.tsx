@@ -95,6 +95,24 @@ function Start() {
           )}
         </section>
       </div>
+
+      <section className="steps" aria-labelledby="steps-heading">
+        <h2 id="steps-heading">How it works</h2>
+        <ol>
+          <li>
+            <strong>Create a home</strong>
+            <span>Give it a name and share the link with everyone who lives there.</span>
+          </li>
+          <li>
+            <strong>Add people and bills</strong>
+            <span>Each bill is split evenly. Leftover cents go to whoever joined first.</span>
+          </li>
+          <li>
+            <strong>Everyone pays their share</strong>
+            <span>See who has paid and who still owes, per bill and in total.</span>
+          </li>
+        </ol>
+      </section>
     </main>
   )
 }

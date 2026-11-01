@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import { ApiError, api, type Balance, type Bill, type Member, messageOf, type Share } from '../api'
+import { ApiError, api, type Balance, type Bill, messageOf, type Share } from '../api'
 import { Avatar, Icon, StatePanel } from '../components'
 import { formatCents, parseDollars } from '../money'
 import { rememberHome } from '../recentHomes'
@@ -22,12 +22,13 @@ export const Route = createFileRoute('/homes/$homeId')({
 })
 
 const paidAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const paidDayFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
 
 function BackLink() {
   return (
     <Link to="/" className="back-link">
       <Icon name="arrowLeft" size={16} />
-      All homes
+      Your homes
     </Link>
   )
 }
@@ -84,6 +85,9 @@ function HomePage() {
   const { home, bills, balances } = Route.useLoaderData()
   const memberName = new Map(home.members.map((member) => [member.id, member.name]))
   const outstanding = balances.reduce((total, balance) => total + balance.outstandingCents, 0)
+  const paid = bills
+    .flatMap((bill) => bill.shares)
+    .reduce((total, share) => (share.paidAt ? total + share.amountCents : total), 0)
 
   useEffect(() => {
     rememberHome({ id: home.id, name: home.name })
@@ -98,40 +102,47 @@ function HomePage() {
       </header>
 
       <dl className="stats">
-        <div className="stat">
-          <dt>Outstanding</dt>
+        <div className="stat stat-highlight">
+          <dt>Still owed</dt>
           <dd>{formatCents(outstanding)}</dd>
+        </div>
+        <div className="stat">
+          <dt>Paid so far</dt>
+          <dd>{formatCents(paid)}</dd>
         </div>
         <div className="stat">
           <dt>Bills</dt>
           <dd>{bills.length}</dd>
         </div>
-        <div className="stat">
-          <dt>Members</dt>
-          <dd>{home.members.length}</dd>
-        </div>
       </dl>
 
-      <div className="two-col">
-        <Members homeId={home.id} members={home.members} />
-        <Balances balances={balances} />
+      <div className="home-layout">
+        <aside className="home-side">
+          <People homeId={home.id} balances={balances} />
+          <AddBill homeId={home.id} memberCount={home.members.length} />
+        </aside>
+
+        <section className="home-main" aria-labelledby="bills-heading">
+          <h2 id="bills-heading" className="section-title">
+            Bills
+          </h2>
+          {bills.length === 0 ? (
+            <div className="empty">
+              <span className="empty-icon">
+                <Icon name="receipt" size={24} />
+              </span>
+              <p className="empty-title">No bills yet</p>
+              <p>
+                {home.members.length === 0
+                  ? 'Add the people who share this home, then add your first bill.'
+                  : 'Add a bill and it will be split between everyone in the home.'}
+              </p>
+            </div>
+          ) : (
+            bills.map((bill) => <BillCard key={bill.id} bill={bill} memberName={memberName} />)
+          )}
+        </section>
       </div>
-
-      <AddBill homeId={home.id} memberCount={home.members.length} />
-
-      <section aria-labelledby="bills-heading">
-        <h2 id="bills-heading" className="section-title">
-          Bills
-        </h2>
-        {bills.length === 0 ? (
-          <div className="empty">
-            <Icon name="receipt" size={24} />
-            <p>No bills yet. Add one above and it will be split between every member.</p>
-          </div>
-        ) : (
-          bills.map((bill) => <BillCard key={bill.id} bill={bill} memberName={memberName} />)
-        )}
-      </section>
     </main>
   )
 }
@@ -157,7 +168,8 @@ function CopyLink() {
   )
 }
 
-function Members({ homeId, members }: { homeId: string; members: Member[] }) {
+/** Members in join order with what each one still owes, plus the form to add a member. */
+function People({ homeId, balances }: { homeId: string; balances: Balance[] }) {
   const router = useRouter()
   const [name, setName] = useState('')
   const add = useAction(async () => {
@@ -168,15 +180,24 @@ function Members({ homeId, members }: { homeId: string; members: Member[] }) {
 
   return (
     <section className="card">
-      <h2>Members</h2>
-      {members.length === 0 ? (
-        <p className="muted">No members yet. Add the people who share this home.</p>
+      <h2 className="card-title">
+        People <span className="count">{balances.length}</span>
+      </h2>
+      {balances.length === 0 ? (
+        <p className="muted">No one yet. Add the people who share this home.</p>
       ) : (
         <ol className="people">
-          {members.map((member) => (
-            <li key={member.id}>
-              <Avatar name={member.name} />
-              {member.name}
+          {balances.map((balance) => (
+            <li key={balance.memberId}>
+              <Avatar name={balance.name} />
+              <span className="grow">{balance.name}</span>
+              {balance.outstandingCents === 0 ? (
+                <span className="badge badge-paid">Settled</span>
+              ) : (
+                <span className="owed">
+                  <span className="amount">{formatCents(balance.outstandingCents)}</span> owed
+                </span>
+              )}
             </li>
           ))}
         </ol>
@@ -191,7 +212,7 @@ function Members({ homeId, members }: { homeId: string; members: Member[] }) {
         <label className="field">
           <span className="sr-only">Member name</span>
           <input
-            placeholder="Add a member"
+            placeholder="Add a person"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
@@ -201,31 +222,6 @@ function Members({ homeId, members }: { homeId: string; members: Member[] }) {
         </button>
       </form>
       {add.error && <p className="form-error">{add.error}</p>}
-    </section>
-  )
-}
-
-function Balances({ balances }: { balances: Balance[] }) {
-  return (
-    <section className="card">
-      <h2>Balances</h2>
-      {balances.length === 0 ? (
-        <p className="muted">Balances appear once the home has members.</p>
-      ) : (
-        <ul className="people">
-          {balances.map((balance) => (
-            <li key={balance.memberId}>
-              <Avatar name={balance.name} />
-              <span className="grow">{balance.name}</span>
-              {balance.outstandingCents === 0 ? (
-                <span className="badge badge-paid">Settled</span>
-              ) : (
-                <span className="amount">{formatCents(balance.outstandingCents)} owed</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   )
 }
@@ -286,8 +282,8 @@ function AddBill({ homeId, memberCount }: { homeId: string; memberCount: number 
       </form>
       <p className="hint">
         {memberCount === 0
-          ? 'Add a member first. A bill needs someone to pay it.'
-          : `Split evenly between ${memberCount} ${memberCount === 1 ? 'member' : 'members'}. Extra cents go to the earliest members.`}
+          ? 'Add a person first. A bill needs someone to pay it.'
+          : `Split evenly between ${memberCount} ${memberCount === 1 ? 'person' : 'people'}. Leftover cents go to whoever joined first.`}
       </p>
       {amountInvalid && (
         <p className="form-error">Enter a positive amount with at most 2 decimals.</p>
@@ -307,7 +303,8 @@ function BillCard({ bill, memberName }: { bill: Bill; memberName: Map<string, st
         <div>
           <h3>{bill.title}</h3>
           <p className="muted small">
-            {paidCount} of {bill.shares.length} paid
+            Split {bill.shares.length} {bill.shares.length === 1 ? 'way' : 'ways'} · {paidCount} of{' '}
+            {bill.shares.length} paid
           </p>
         </div>
         <div className="bill-total">
@@ -361,9 +358,12 @@ function ShareStatus({
   if (share.paidAt) {
     return (
       <span className="share-action">
-        <span className="badge badge-paid" title={paidAtFormat.format(new Date(share.paidAt))}>
+        <span className="badge badge-paid">
           <Icon name="check" size={14} />
           Paid
+          <time dateTime={share.paidAt} title={paidAtFormat.format(new Date(share.paidAt))}>
+            {paidDayFormat.format(new Date(share.paidAt))}
+          </time>
         </span>
       </span>
     )

@@ -8,6 +8,7 @@
   --primary: #0f7a5c;
   --primary-hover: #0b6249;
   --primary-soft: #e3f3ed;
+  --on-primary: #ffffff;
   --warning: #b45309;
   --warning-hover: #92400e;
   --danger: #c0262d;
@@ -35,17 +36,13 @@
     --primary: #34b38a;
     --primary-hover: #4cc59d;
     --primary-soft: #173a2e;
+    --on-primary: #0e1412;
     --warning: #f59e0b;
     --warning-hover: #fbbf24;
     --danger: #f87171;
     --danger-soft: #3a1b1b;
     --focus: #60a5fa;
     --shadow: none;
-  }
-
-  .btn-primary,
-  .btn-warning {
-    color: #0e1412;
   }
 }
 
@@ -95,7 +92,7 @@ a {
 
 .topbar-inner,
 .page {
-  max-width: 880px;
+  max-width: 1080px;
   margin: 0 auto;
   padding-inline: 20px;
 }
@@ -122,7 +119,7 @@ a {
   height: 32px;
   border-radius: 8px;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .page {
@@ -143,7 +140,6 @@ a {
   margin-bottom: 14px;
 }
 
-.two-col,
 .start-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -213,7 +209,113 @@ a {
   background: var(--primary-soft);
 }
 
+.amount,
+.amount-lg {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.amount-lg {
+  font-size: 1.2rem;
+}
+
+/* Start page steps */
+
+.steps {
+  margin-top: 24px;
+}
+
+.steps h2 {
+  font-size: 1.05rem;
+  margin-bottom: 12px;
+}
+
+.steps ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  counter-reset: step;
+}
+
+.steps li {
+  counter-increment: step;
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+}
+
+.steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.steps span {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 /* Home page */
+
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-areas: "main side";
+  gap: 24px;
+  align-items: start;
+}
+
+.home-main {
+  grid-area: main;
+}
+
+.home-side {
+  grid-area: side;
+  position: sticky;
+  top: 16px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.owed {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.owed .amount {
+  color: var(--text);
+}
+
+.badge time {
+  font-weight: 500;
+  opacity: 0.8;
+}
 
 .back-link {
   display: inline-flex;
@@ -270,9 +372,20 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+.stat-highlight {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.stat-highlight dt {
+  color: inherit;
+  opacity: 0.85;
+}
+
 .section-title {
   font-size: 1.15rem;
-  margin: 12px 0 12px;
+  margin: 0 0 12px;
 }
 
 .people {
@@ -302,24 +415,31 @@ a {
   flex-shrink: 0;
 }
 
-.amount,
-.amount-lg {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.amount-lg {
-  font-size: 1.2rem;
-}
-
 .empty {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 24px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
   color: var(--text-muted);
+}
+
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.empty-title {
+  color: var(--text);
+  font-weight: 600;
 }
 
 /* Bills */
@@ -436,8 +556,6 @@ input[aria-invalid="true"] {
 
 .bill-form {
   display: grid;
-  grid-template-columns: 2fr 1fr auto;
-  align-items: end;
   gap: 12px;
 }
 
@@ -506,7 +624,7 @@ input[aria-invalid="true"] {
 
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -536,7 +654,7 @@ input[aria-invalid="true"] {
 
 .btn-warning {
   background: var(--warning);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn-warning:hover:not(:disabled) {
@@ -565,6 +683,10 @@ input[aria-invalid="true"] {
 
 .muted {
   color: var(--text-muted);
+}
+
+.card > .muted {
+  margin-bottom: 14px;
 }
 
 .small {
@@ -655,6 +777,20 @@ input[aria-invalid="true"] {
 
 /* Small screens */
 
+@media (max-width: 860px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "side"
+      "main";
+    gap: 8px;
+  }
+
+  .home-side {
+    position: static;
+  }
+}
+
 @media (max-width: 600px) {
   .page {
     padding-top: 16px;
@@ -670,10 +806,6 @@ input[aria-invalid="true"] {
 
   .stat dd {
     font-size: 1.1rem;
-  }
-
-  .bill-form {
-    grid-template-columns: 1fr;
   }
 
   .share-action-pay,
