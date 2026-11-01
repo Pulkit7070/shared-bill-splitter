@@ -1,5 +1,35 @@
 # SDE Intern Assignment: Shared Bill Splitter
 
+## How to run this solution
+
+```bash
+pnpm install
+pnpm dev          # API on http://localhost:8787, web on http://localhost:5173
+pnpm test         # API tests (visible tests plus my own edge case tests)
+pnpm check        # Biome
+pnpm typecheck    # tsc on api and web
+pnpm build        # web production build
+```
+
+Open http://localhost:5173, create a home, add members, add a bill, and pay shares.
+`SOLUTION.md` explains the design in detail.
+
+## Decisions
+
+1. **The database decides who wins a payment.** Paying runs
+   `UPDATE shares ... WHERE id = ? AND bill_id = ? AND paid_at IS NULL`. SQLite runs writes one
+   at a time, so only one request can match the unpaid row. The key that won is stored on the
+   share, so a retry with the same key returns the stored result (200) and any other key gets 409.
+   I chose this over read-then-write in code because a read-then-write lets two requests both see
+   "unpaid".
+2. **Members get an explicit `position`.** Join order drives the split, so I store it as a column
+   with `UNIQUE (home_id, position)` instead of relying on timestamps (two members can join in
+   the same millisecond) or rowid (an SQLite detail, not a promise).
+3. **Hand-written validation instead of a library.** There are only three fields to check (a name,
+   a title, an amount), so three small functions in `api/src/validation.ts` are easier to read and
+   explain than a schema library. Unparseable JSON is 400, a parsed body with bad fields is 422,
+   matching the 422 the spec asks for on bad amounts.
+
 Welcome. In this assignment you build a small bill splitter for a shared home. It has two parts:
 
 1. **Homes and members:** create a home and add members to it.
