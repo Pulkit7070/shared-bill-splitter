@@ -29,15 +29,15 @@ API files:
 
 Web files:
 
-| File                               | What it does                                                                          |
-| ---------------------------------- | ------------------------------------------------------------------------------------- |
-| `web/src/api.ts`                   | Typed fetch wrapper: timeout, JSON parsing, `ApiError`.                               |
-| `web/src/routes/index.tsx`         | Start page: create a home or open one by id.                                          |
-| `web/src/routes/homes.$homeId.tsx` | The main page: members, balances, add bill, bills with pay buttons.                   |
-| `web/src/useAction.ts`             | Small hook for "run an async action, track pending and error".                        |
-| `web/src/money.ts`                 | Format cents as dollars, parse a dollar string into cents without floats.             |
-| `web/src/components.tsx`           | Inline SVG icons, member avatar, and the panel used for error and not-found states.   |
-| `web/src/recentHomes.ts`           | Remembers the last 5 opened homes in `localStorage`, so nobody has to keep a home id. |
+| File                               | What it does                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `web/src/api.ts`                   | Typed fetch wrapper: timeout, JSON parsing, `ApiError`.                                                             |
+| `web/src/routes/index.tsx`         | Start page: create a home or open one by id.                                                                        |
+| `web/src/routes/homes.$homeId.tsx` | The main page: totals, bills with pay buttons, and a side panel with people (what each owes) and the add bill form. |
+| `web/src/useAction.ts`             | Small hook for "run an async action, track pending and error".                                                      |
+| `web/src/money.ts`                 | Format cents as dollars, parse a dollar string into cents without floats.                                           |
+| `web/src/components.tsx`           | Inline SVG icons, member avatar, and the panel used for error and not-found states.                                 |
+| `web/src/recentHomes.ts`           | Remembers the last 5 opened homes in `localStorage`, so nobody has to keep a home id.                               |
 
 Data flow for paying a share: the button calls `api.payShare` with an Idempotency-Key, the Worker
 runs one D1 batch (UPDATE then SELECT), returns the share, and the page calls
